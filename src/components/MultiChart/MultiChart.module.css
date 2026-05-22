@@ -1,0 +1,65 @@
+.root {
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  width: 100%;
+  height: 100%;
+  background: var(--multi-bg, transparent);
+  min-height: 0;
+}
+
+.single {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.doubleH {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+.doubleV {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.triple {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.triple > :nth-child(1) {
+  grid-column: 1 / span 2;
+}
+
+.quadruple {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.cell {
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+
+.layoutSelector {
+  display: flex;
+  gap: 4px;
+}
+
+.layoutBtn {
+  font: 11px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 4px 8px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--toolbar-border, #d0d0d0);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.layoutBtnActive {
+  background: var(--toolbar-accent, #2962ff);
+  color: #fff;
+  border-color: var(--toolbar-accent, #2962ff);
+}
