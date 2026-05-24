@@ -115,6 +115,7 @@ export function chartOptionsForTheme(
     layout: {
       background: { color: palette.background },
       textColor: palette.text,
+      attributionLogo: false,
     },
     grid: {
       vertLines: { color: palette.grid },
