@@ -1,34 +1,32 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { TrendLineDrawing } from '../types/drawing';
+import type { DrawingShape } from '../types/drawing';
 
 export interface DrawingsState {
-  trendLines: TrendLineDrawing[];
+  drawings: DrawingShape[];
 }
 
 const initialState: DrawingsState = {
-  trendLines: [],
+  drawings: [],
 };
 
 const drawingsSlice = createSlice({
   name: 'drawings',
   initialState,
   reducers: {
-    addTrendLine(state, action: PayloadAction<TrendLineDrawing>) {
-      state.trendLines.push(action.payload);
+    addDrawing(state, action: PayloadAction<DrawingShape>) {
+      state.drawings.push(action.payload);
     },
-    updateTrendLine(state, action: PayloadAction<TrendLineDrawing>) {
-      const idx = state.trendLines.findIndex(
-        (d) => d.id === action.payload.id,
-      );
+    updateDrawing(state, action: PayloadAction<DrawingShape>) {
+      const idx = state.drawings.findIndex((d) => d.id === action.payload.id);
       if (idx !== -1) {
-        state.trendLines[idx] = action.payload;
+        state.drawings[idx] = action.payload;
       }
     },
-    removeTrendLine(state, action: PayloadAction<string>) {
-      state.trendLines = state.trendLines.filter((d) => d.id !== action.payload);
+    removeDrawing(state, action: PayloadAction<string>) {
+      state.drawings = state.drawings.filter((d) => d.id !== action.payload);
     },
     clearForChart(state, action: PayloadAction<string>) {
-      state.trendLines = state.trendLines.filter(
+      state.drawings = state.drawings.filter(
         (d) => d.chartId !== action.payload,
       );
     },

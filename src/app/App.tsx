@@ -3,13 +3,14 @@ import { ChartHeader } from '../components/ChartHeader/ChartHeader';
 import { MultiChart } from '../components/MultiChart/MultiChart';
 import { LayoutSelector } from '../components/MultiChart/LayoutSelector';
 import { getTheme } from '../components/Chart/utils/themePresets';
+import type { ToolMode } from '../types/drawing';
 import { useAppSelector } from './store';
 import AppStyles from './App.module.css';
 
 export function App() {
   const theme = useAppSelector((s) => s.chart.theme);
   const palette = getTheme(theme);
-  const [drawingMode, setDrawingMode] = useState<'none' | 'trendline'>('none');
+  const [drawingMode, setDrawingMode] = useState<ToolMode>('none');
   const canvasGetterRef = useRef<() => HTMLCanvasElement | null>(() => null);
 
   const registerCanvasGetter = useCallback(

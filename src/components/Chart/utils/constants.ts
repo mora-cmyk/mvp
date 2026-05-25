@@ -4,6 +4,7 @@ import type {
   TimeFramePreset,
   TimeFrameUnit,
 } from '../../../types/chart';
+import type { ToolMode } from '../../../types/drawing';
 import type { IndicatorKind } from '../../../types/indicator';
 
 export const TIMEFRAMES: TimeFramePreset[] = [
@@ -55,7 +56,14 @@ export const INDICATOR_KINDS: { value: IndicatorKind; label: string }[] = [
   { value: 'MACD', label: 'MACD' },
 ];
 
-export const DRAWING_TOOLS: { value: 'trendline' | 'none'; label: string }[] = [
+export const DRAWING_TOOLS: { value: ToolMode; label: string }[] = [
   { value: 'none', label: 'None' },
-  { value: 'trendline', label: 'Trend Line' },
+  { value: 'trendline', label: 'Trend' },
+  { value: 'ray', label: 'Ray' },
+  { value: 'horizontal', label: 'Horiz' },
+  { value: 'vertical', label: 'Vert' },
+  { value: 'rectangle', label: 'Rect' },
+  { value: 'fibonacci', label: 'Fib' },
+  { value: 'fibFan', label: 'Fan' },
+  { value: 'channel', label: 'Channel' },
 ];

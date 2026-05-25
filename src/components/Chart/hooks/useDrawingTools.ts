@@ -5,34 +5,38 @@ import type {
   SeriesType,
   UTCTimestamp,
 } from 'lightweight-charts';
-import type { TrendLineDrawing } from '../../../types/drawing';
+import {
+  pointsForKind,
+  type DrawingPoint,
+  type DrawingShape,
+  type ToolMode,
+} from '../../../types/drawing';
 import type { ThemePalette } from '../utils/themePresets';
-import { TrendLinePrimitive } from '../drawings/TrendLinePrimitive';
-
-type ToolMode = 'none' | 'trendline';
+import { DrawingPrimitive, type DrawingHit } from '../drawings/DrawingPrimitive';
 
 interface UseDrawingToolsOptions {
   chart: IChartApi | null;
   series: ISeriesApi<SeriesType> | null;
   containerEl: HTMLElement | null;
   chartId: string;
-  drawings: TrendLineDrawing[];
+  drawings: DrawingShape[];
   toolMode: ToolMode;
   palette: ThemePalette;
-  onAddTrendLine: (d: TrendLineDrawing) => void;
-  onUpdateTrendLine: (d: TrendLineDrawing) => void;
+  onAddDrawing: (d: DrawingShape) => void;
+  onUpdateDrawing: (d: DrawingShape) => void;
   onFinish: () => void;
 }
 
 interface DraftState {
-  start: { time: UTCTimestamp; price: number; x: number; y: number };
-  current: { time: UTCTimestamp; price: number; x: number; y: number };
+  kind: Exclude<ToolMode, 'none'>;
+  start: DrawingPoint;
+  current: DrawingPoint;
 }
 
 interface DragState {
   drawingId: string;
-  handle: 'start' | 'end' | 'whole';
-  origin: TrendLineDrawing;
+  handleIdx: number | 'whole';
+  origin: DrawingShape;
   startX: number;
   startY: number;
 }
@@ -46,13 +50,13 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
     drawings,
     toolMode,
     palette,
-    onAddTrendLine,
-    onUpdateTrendLine,
+    onAddDrawing,
+    onUpdateDrawing,
     onFinish,
   } = opts;
 
-  const primitivesRef = useRef<Map<string, TrendLinePrimitive>>(new Map());
-  const draftPrimitiveRef = useRef<TrendLinePrimitive | null>(null);
+  const primitivesRef = useRef<Map<string, DrawingPrimitive>>(new Map());
+  const draftPrimitiveRef = useRef<DrawingPrimitive | null>(null);
   const [, forceUpdate] = useState(0);
   const draftRef = useRef<DraftState | null>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -70,7 +74,7 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
       lastSeriesRef.current = series;
     }
     const map = primitivesRef.current;
-    const desired = new Map<string, TrendLineDrawing>();
+    const desired = new Map<string, DrawingShape>();
     drawings
       .filter((d) => d.chartId === chartId)
       .forEach((d) => desired.set(d.id, d));
@@ -91,7 +95,7 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
       if (existing) {
         existing.setData(d);
       } else {
-        const prim = new TrendLinePrimitive(d);
+        const prim = new DrawingPrimitive(d);
         series.attachPrimitive(prim);
         map.set(id, prim);
       }
@@ -106,7 +110,7 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
     const coordToTimePrice = (
       x: number,
       y: number,
-    ): { time: UTCTimestamp; price: number } | null => {
+    ): DrawingPoint | null => {
       const t = chart.timeScale().coordinateToTime(x);
       const p = series.coordinateToPrice(y);
       if (t === null || p === null) {
@@ -115,31 +119,38 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
       return { time: t as UTCTimestamp, price: Number(p) };
     };
 
+    const detachDraft = (): void => {
+      if (draftPrimitiveRef.current) {
+        try {
+          series.detachPrimitive(draftPrimitiveRef.current);
+        } catch {
+          // ignore
+        }
+        draftPrimitiveRef.current = null;
+        forceUpdate((n) => n + 1);
+      }
+    };
+
     const renderDraft = (): void => {
       const draft = draftRef.current;
       if (!draft) {
-        if (draftPrimitiveRef.current) {
-          try {
-            series.detachPrimitive(draftPrimitiveRef.current);
-          } catch {
-            // ignore
-          }
-          draftPrimitiveRef.current = null;
-          forceUpdate((n) => n + 1);
-        }
+        detachDraft();
         return;
       }
-      const data: TrendLineDrawing = {
+      const pts = pointsForKind(draft.kind);
+      const data: DrawingShape = {
         id: '__draft__',
         chartId,
-        kind: 'trendline',
-        start: { time: draft.start.time, price: draft.start.price },
-        end: { time: draft.current.time, price: draft.current.price },
+        kind: draft.kind,
+        points:
+          pts === 1
+            ? [draft.start]
+            : [draft.start, draft.current],
         color: palette.accent,
         width: 1,
       };
       if (!draftPrimitiveRef.current) {
-        const prim = new TrendLinePrimitive(data);
+        const prim = new DrawingPrimitive(data);
         series.attachPrimitive(prim);
         draftPrimitiveRef.current = prim;
       } else {
@@ -150,6 +161,21 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
         .applyOptions({ rightOffset: chart.timeScale().options().rightOffset });
     };
 
+    const commitDrawing = (kind: Exclude<ToolMode, 'none'>, points: DrawingPoint[]): void => {
+      const id = `dr-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const drawing: DrawingShape = {
+        id,
+        chartId,
+        kind,
+        points,
+        color: palette.accent,
+        width: 2,
+      };
+      detachDraft();
+      onAddDrawing(drawing);
+      onFinish();
+    };
+
     const onMouseDown = (ev: MouseEvent): void => {
       if (ev.button !== 0) {
         return;
@@ -158,15 +184,21 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
       const x = ev.clientX - rect.left;
       const y = ev.clientY - rect.top;
 
-      if (toolMode === 'trendline') {
+      if (toolMode !== 'none') {
         const tp = coordToTimePrice(x, y);
         if (!tp) {
           return;
         }
+        const needed = pointsForKind(toolMode);
+        if (needed === 1) {
+          commitDrawing(toolMode, [tp]);
+          return;
+        }
         if (!draftRef.current) {
           draftRef.current = {
-            start: { ...tp, x, y },
-            current: { ...tp, x, y },
+            kind: toolMode,
+            start: tp,
+            current: tp,
           };
           renderDraft();
         }
@@ -178,8 +210,11 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
         if (prim) {
           dragRef.current = {
             drawingId: hit.id,
-            handle: hit.isHandle && hit.whichHandle ? hit.whichHandle : 'whole',
-            origin: { ...prim.data() },
+            handleIdx: hit.isHandle && hit.whichHandle !== undefined ? hit.whichHandle : 'whole',
+            origin: {
+              ...prim.data(),
+              points: prim.data().points.map((p) => ({ ...p })),
+            },
             startX: x,
             startY: y,
           };
@@ -200,8 +235,9 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
         const tp = coordToTimePrice(x, y);
         if (tp) {
           draftRef.current = {
+            kind: draftRef.current.kind,
             start: draftRef.current.start,
-            current: { ...tp, x, y },
+            current: tp,
           };
           renderDraft();
         }
@@ -214,17 +250,17 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
         if (!prim) {
           return;
         }
-        if (drag.handle === 'start' || drag.handle === 'end') {
+        if (typeof drag.handleIdx === 'number') {
           const tp = coordToTimePrice(x, y);
           if (!tp) {
             return;
           }
-          const next: TrendLineDrawing = { ...drag.origin };
-          if (drag.handle === 'start') {
-            next.start = { time: tp.time, price: tp.price };
-          } else {
-            next.end = { time: tp.time, price: tp.price };
-          }
+          const next: DrawingShape = {
+            ...drag.origin,
+            points: drag.origin.points.map((p, i) =>
+              i === drag.handleIdx ? tp : p,
+            ),
+          };
           prim.setData(next);
         } else {
           const tpNow = coordToTimePrice(x, y);
@@ -234,16 +270,12 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
           }
           const dt = (tpNow.time as number) - (tpStart.time as number);
           const dp = tpNow.price - tpStart.price;
-          const next: TrendLineDrawing = {
+          const next: DrawingShape = {
             ...drag.origin,
-            start: {
-              time: ((drag.origin.start.time as number) + dt) as UTCTimestamp,
-              price: drag.origin.start.price + dp,
-            },
-            end: {
-              time: ((drag.origin.end.time as number) + dt) as UTCTimestamp,
-              price: drag.origin.end.price + dp,
-            },
+            points: drag.origin.points.map((p) => ({
+              time: ((p.time as number) + dt) as UTCTimestamp,
+              price: p.price + dp,
+            })),
           };
           prim.setData(next);
         }
@@ -256,39 +288,22 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
       const y = ev.clientY - rect.top;
 
       if (draftRef.current) {
-        const start = draftRef.current.start;
+        const draft = draftRef.current;
         const tp = coordToTimePrice(x, y);
         draftRef.current = null;
         if (tp) {
-          const id = `tl-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-          const drawing: TrendLineDrawing = {
-            id,
-            chartId,
-            kind: 'trendline',
-            start: { time: start.time, price: start.price },
-            end: { time: tp.time, price: tp.price },
-            color: palette.accent,
-            width: 2,
-          };
-          if (draftPrimitiveRef.current) {
-            try {
-              series.detachPrimitive(draftPrimitiveRef.current);
-            } catch {
-              // ignore
-            }
-            draftPrimitiveRef.current = null;
+          const distancePx = Math.hypot(x - rect.width / 2, y - rect.height / 2);
+          if (
+            (tp.time as number) === (draft.start.time as number) &&
+            tp.price === draft.start.price &&
+            distancePx === 0
+          ) {
+            detachDraft();
+            return;
           }
-          onAddTrendLine(drawing);
-          onFinish();
+          commitDrawing(draft.kind, [draft.start, tp]);
         } else {
-          if (draftPrimitiveRef.current) {
-            try {
-              series.detachPrimitive(draftPrimitiveRef.current);
-            } catch {
-              // ignore
-            }
-            draftPrimitiveRef.current = null;
-          }
+          detachDraft();
         }
         return;
       }
@@ -297,7 +312,7 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
       if (drag) {
         const prim = primitivesRef.current.get(drag.drawingId);
         if (prim) {
-          onUpdateTrendLine(prim.data());
+          onUpdateDrawing(prim.data());
           prim.setSelected(false);
         }
         dragRef.current = null;
@@ -319,8 +334,8 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
     chartId,
     toolMode,
     palette,
-    onAddTrendLine,
-    onUpdateTrendLine,
+    onAddDrawing,
+    onUpdateDrawing,
     onFinish,
   ]);
 
@@ -342,11 +357,11 @@ export function useDrawingTools(opts: UseDrawingToolsOptions): void {
 }
 
 function hitTestDrawings(
-  map: Map<string, TrendLinePrimitive>,
+  map: Map<string, DrawingPrimitive>,
   x: number,
   y: number,
-): { id: string; isHandle: boolean; whichHandle?: 'start' | 'end' } | null {
-  let best: { id: string; isHandle: boolean; whichHandle?: 'start' | 'end' } | null = null;
+): DrawingHit | null {
+  let best: DrawingHit | null = null;
   map.forEach((p) => {
     const hit = p.hitTestDrawing(x, y);
     if (hit) {

@@ -1,11 +1,12 @@
 import { useAppDispatch, useAppSelector } from '../../app/store';
 import { drawingsActions } from '../../store/drawingsSlice';
+import type { ToolMode } from '../../types/drawing';
 import { DRAWING_TOOLS } from '../Chart/utils/constants';
 import HeaderStyles from './ChartHeader.module.css';
 
 interface DrawingToolsPanelProps {
-  drawingMode: 'none' | 'trendline';
-  onChange: (mode: 'none' | 'trendline') => void;
+  drawingMode: ToolMode;
+  onChange: (mode: ToolMode) => void;
 }
 
 export function DrawingToolsPanel(props: DrawingToolsPanelProps) {
@@ -14,7 +15,7 @@ export function DrawingToolsPanel(props: DrawingToolsPanelProps) {
   const activeCellId = useAppSelector((s) => s.chart.activeCellId);
   const drawingsCount = useAppSelector(
     (s) =>
-      s.drawings.trendLines.filter((d) => d.chartId === activeCellId).length,
+      s.drawings.drawings.filter((d) => d.chartId === activeCellId).length,
   );
   return (
     <div className={HeaderStyles.group}>
