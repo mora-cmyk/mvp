@@ -13,13 +13,14 @@ import { chartActions } from '../../store/chartSlice';
 import { drawingsActions } from '../../store/drawingsSlice';
 import { ordersActions } from '../../store/ordersSlice';
 import type { ChartCellState } from '../../store/chartTypes';
-import type { TrendLineDrawing } from '../../types/drawing';
+import type { DrawingShape, ToolMode } from '../../types/drawing';
 import { ChartContextMenu } from './ChartContextMenu/ChartContextMenu';
 import { ChartTooltip } from './ChartTooltip/ChartTooltip';
 import { useChartData } from './hooks/useChartData';
 import { useChartInstance } from './hooks/useChartInstance';
 import { useContextMenu } from './hooks/useContextMenu';
 import { useCrosshairTooltip } from './hooks/useCrosshairTooltip';
+import { useCrosshairMode } from './hooks/useCrosshairMode';
 import { useDrawingTools } from './hooks/useDrawingTools';
 import { useIndicators } from './hooks/useIndicators';
 import { useOrdersOnChart } from './hooks/useOrdersOnChart';
@@ -34,7 +35,7 @@ import ChartStyles from './Chart.module.css';
 
 interface ChartProps {
   cell: ChartCellState;
-  drawingMode: 'none' | 'trendline';
+  drawingMode: ToolMode;
   onDrawingFinished: () => void;
 }
 
@@ -53,8 +54,8 @@ export function Chart(props: ChartProps) {
     shallowEqual,
   );
   const tradeSpecs = useAppSelector((s) => s.orders.tradeSpecs);
-  const trendLines = useAppSelector(
-    (s) => s.drawings.trendLines.filter((d) => d.chartId === cell.id),
+  const drawings = useAppSelector(
+    (s) => s.drawings.drawings.filter((d) => d.chartId === cell.id),
     shallowEqual,
   );
 
@@ -152,17 +153,19 @@ export function Chart(props: ChartProps) {
     series: priceSeries,
     containerEl,
     chartId: cell.id,
-    drawings: trendLines,
+    drawings,
     toolMode: drawingMode,
     palette,
-    onAddTrendLine: (d: TrendLineDrawing) => {
-      dispatch(drawingsActions.addTrendLine(d));
+    onAddDrawing: (d: DrawingShape) => {
+      dispatch(drawingsActions.addDrawing(d));
     },
-    onUpdateTrendLine: (d: TrendLineDrawing) => {
-      dispatch(drawingsActions.updateTrendLine(d));
+    onUpdateDrawing: (d: DrawingShape) => {
+      dispatch(drawingsActions.updateDrawing(d));
     },
     onFinish: onDrawingFinished,
   });
+
+  useCrosshairMode({ chart, palette, enabled: cell.showCrosshair });
 
   const mergedCanvasRef = useCallback(
     (node: HTMLDivElement | null) => {

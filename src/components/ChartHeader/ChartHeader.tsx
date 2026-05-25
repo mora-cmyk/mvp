@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useAppSelector } from '../../app/store';
+import type { ToolMode } from '../../types/drawing';
 import { getTheme } from '../Chart/utils/themePresets';
 import { ChartTypeSelector } from './ChartTypeSelector';
 import { CrosshairToggle } from './CrosshairToggle';
@@ -14,8 +15,8 @@ import { TimeframeSelector } from './TimeframeSelector';
 import HeaderStyles from './ChartHeader.module.css';
 
 interface ChartHeaderProps {
-  drawingMode: 'none' | 'trendline';
-  onDrawingChange: (mode: 'none' | 'trendline') => void;
+  drawingMode: ToolMode;
+  onDrawingChange: (mode: ToolMode) => void;
   getActiveChartCanvas: () => HTMLCanvasElement | null;
 }
 
