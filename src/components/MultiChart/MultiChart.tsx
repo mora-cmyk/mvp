@@ -2,11 +2,12 @@ import { useEffect, useRef } from 'react';
 import { Chart } from '../Chart/Chart';
 import { useAppSelector } from '../../app/store';
 import type { LayoutKind } from '../../types/chart';
+import type { ToolMode } from '../../types/drawing';
 import { useChartSync } from './hooks/useChartSync';
 import MultiStyles from './MultiChart.module.css';
 
 interface MultiChartProps {
-  drawingMode: 'none' | 'trendline';
+  drawingMode: ToolMode;
   onDrawingFinished: () => void;
   registerCanvasGetter: (getter: () => HTMLCanvasElement | null) => void;
 }

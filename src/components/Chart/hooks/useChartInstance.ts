@@ -78,14 +78,7 @@ export function useChartInstance(theme: ThemeName): UseChartInstanceResult {
     if (!c) {
       return;
     }
-    c.applyOptions({
-      ...chartOptionsForTheme(palette),
-      crosshair: {
-        mode: CrosshairMode.Normal,
-        vertLine: { color: palette.crosshair },
-        horzLine: { color: palette.crosshair },
-      },
-    });
+    c.applyOptions(chartOptionsForTheme(palette));
   }, [palette]);
 
   return { containerRef, chart, palette };
